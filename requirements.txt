@@ -1,0 +1,32 @@
+# 客户端应用程序依赖
+# 使用以下命令安装所有依赖:
+# pip install -r requirements.txt
+
+# GUI框架
+# tkinter  # Python标准库自带
+
+# HTTP请求处理
+requests>=2.25.0
+
+# 报表生成
+reportlab>=3.5.0
+
+# 图片/JPEG导出
+Pillow>=8.0.0
+
+# Word文档处理
+python-docx>=0.8.10
+
+# 抓取盒子(pi-star)页面解析
+beautifulsoup4>=4.9.0
+
+# 数据可视化
+matplotlib>=3.4.0
+numpy>=1.20.0
+pandas>=1.2.0
+
+# 数据序列化
+# pickle  # Python标准库自带
+
+# 其他标准库模块
+# sqlite3, ctypes, tempfile, shutil, threading, queue, configparser, re, datetime, os, csv  # Python标准库自带

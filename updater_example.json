@@ -1,0 +1,5 @@
+{
+  "version": "1.12",
+  "download_url": "https://example.com/download/mmdvm_updater_update.zip",
+  "release_notes": "1. 修复了已知问题\n2. 优化了更新检测逻辑\n3. 改进了错误处理机制\n4. 新增支持多服务器自动切换功能\n5. 优化了用户界面体验"
+}

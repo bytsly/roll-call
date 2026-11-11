@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>场次报名 - 点名系统服务器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 460px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 { font-size: 24px; margin-bottom: 5px; }
+        .header .version { opacity: 0.8; font-size: 14px; }
+
+        .nav {
+            display: flex;
+            border-bottom: 1px solid #eee;
+        }
+
+        .nav a {
+            flex: 1;
+            text-align: center;
+            padding: 12px 0;
+            font-size: 15px;
+            text-decoration: none;
+            color: #555;
+        }
+
+        .nav a.active {
+            color: #007bff;
+            font-weight: 600;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .content { padding: 20px; }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin: 18px 0 12px;
+            padding-left: 8px;
+            border-left: 4px solid #007bff;
+        }
+
+        .section-title:first-child { margin-top: 0; }
+
+        .input-group { margin-bottom: 16px; }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            padding: 11px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn:active { opacity: 0.85; }
+        .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+        .btn.small {
+            width: auto;
+            padding: 6px 12px;
+            font-size: 13px;
+            margin-top: 8px;
+            background: #f0f0f0;
+            color: #666;
+            border: 1px solid #ddd;
+        }
+
+        .session-card {
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            background: #fafafa;
+        }
+
+        .session-card.closed { opacity: 0.65; }
+
+        .session-card h3 { font-size: 16px; color: #222; margin-bottom: 6px; }
+
+        .session-meta {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.7;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        .badge.open { background: #e3f7e8; color: #1a8f3c; }
+        .badge.closed { background: #f0f0f0; color: #888; }
+
+        .entries {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #444;
+            line-height: 1.7;
+            word-break: break-all;
+        }
+
+        .empty { color: #999; font-size: 13px; }
+
+        .message {
+            display: none;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+
+        .message.ok { display: block; background: #e3f7e8; color: #1a8f3c; }
+        .message.err { display: block; background: #fdeaea; color: #c0392b; }
+
+        details.master {
+            margin-top: 22px;
+            border-top: 1px dashed #ddd;
+            padding-top: 14px;
+        }
+
+        details.master summary {
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .hint { font-size: 12px; color: #999; margin-top: -6px; margin-bottom: 10px; }
+
+        .link-btn {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 13px;
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .device-form {
+            display: none;
+            margin-top: 8px;
+            padding: 10px;
+            background: #f7f7fb;
+            border: 1px solid #e6e6ef;
+            border-radius: 8px;
+        }
+
+        .device-form input {
+            width: 100%;
+            padding: 9px 10px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .device-form button {
+            width: 100%;
+            padding: 9px 10px;
+            border: none;
+            border-radius: 6px;
+            background: #667eea;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>场次报名</h1>
+            <div class="version">版本 {{ version }}</div>
+        </div>
+
+        <div class="nav">
+            <a href="/mobile_roll_call">手机点名</a>
+            <a href="/signup" class="active">场次报名</a>
+        </div>
+
+        <div class="content">
+            <div class="message" id="message"></div>
+
+            <div class="section-title">报名场次</div>
+
+            <div id="signupForm">
+                <div class="input-group">
+                    <label for="sessionSelect">选择场次</label>
+                    <select id="sessionSelect">
+                        <option value="">暂无可报名场次</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="callSign">呼号</label>
+                    <input type="text" id="callSign" placeholder="请输入您的呼号" autocomplete="off" onblur="lookupCallsign()">
+                </div>
+
+                <div class="input-group">
+                    <label for="qth">QTH</label>
+                    <input type="text" id="qth" list="qthOptions" placeholder="选择或输入QTH" autocomplete="off">
+                    <datalist id="qthOptions"></datalist>
+                </div>
+
+                <div class="input-group">
+                    <label for="equipment">设备</label>
+                    <input type="text" id="equipment" list="equipmentOptions" placeholder="选择或输入设备型号" autocomplete="off">
+                    <datalist id="equipmentOptions"></datalist>
+                    <a class="link-btn" onclick="toggleDeviceForm()">＋ 添加新设备（品牌 / 型号）</a>
+                    <div class="device-form" id="deviceForm">
+                        <input type="text" id="deviceBrand" placeholder="品牌，例如 科立讯" autocomplete="off">
+                        <input type="text" id="deviceModel" placeholder="型号，例如 DP980" autocomplete="off">
+                        <button type="button" onclick="addDevice()">添加到设备库</button>
+                    </div>
+                </div>
+
+                <button class="btn" id="submitBtn" onclick="submitEntry()">提交报名</button>
+            </div>
+
+            <div class="section-title">场次列表</div>
+            <div id="sessionList"><div class="empty">加载中...</div></div>
+
+            <details class="master">
+                <summary>主控入口：申请 / 关闭场次</summary>
+
+                <div class="input-group">
+                    <label for="masterToken">主控口令</label>
+                    <input type="password" id="masterToken" placeholder="中继访问令牌（未启用可留空）" autocomplete="off">
+                </div>
+
+                <div class="input-group">
+                    <label for="sessionTitle">场次名称</label>
+                    <input type="text" id="sessionTitle" placeholder="例如：周日晚间点名" autocomplete="off">
+                </div>
+
+                <div class="input-group">
+                    <label for="sessionStart">开始时间</label>
+                    <input type="datetime-local" id="sessionStart">
+                </div>
+
+                <div class="input-group">
+                    <label for="sessionCapacity">人数上限（0 为不限）</label>
+                    <input type="number" id="sessionCapacity" value="0" min="0">
+                </div>
+
+                <div class="input-group">
+                    <label for="sessionNote">说明（可选）</label>
+                    <textarea id="sessionNote" rows="2" placeholder="频段、模式、注意事项等"></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label for="masterCallsign">主控呼号（可选）</label>
+                    <input type="text" id="masterCallsign" placeholder="用于记录场次申请人" autocomplete="off">
+                </div>
+
+                <button class="btn" onclick="createSession()">申请场次</button>
+                <div class="hint">主控口令为中继程序目录下 relay.token 文件内容；未启用令牌时留空。首次输入后会记住。关闭场次：在下方场次列表中点击“关闭报名”。</div>
+            </details>
+        </div>
+    </div>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        let sessions = [];
+
+        function showMessage(text, ok) {
+            const el = $('message');
+            el.textContent = text;
+            el.className = 'message ' + (ok ? 'ok' : 'err');
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => { el.className = 'message'; }, 5000);
+        }
+
+        function defaultStartTime() {
+            const d = new Date(Date.now() + 60 * 60 * 1000);
+            d.setMinutes(0, 0, 0);
+            const pad = (n) => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+                'T' + pad(d.getHours()) + ':00';
+        }
+
+        function rememberToken(token) {
+            try {
+                if (token) localStorage.setItem('signup_master_token', token);
+            } catch (e) { /* 隐私模式下忽略 */ }
+        }
+
+        function restoreToken() {
+            try {
+                const saved = localStorage.getItem('signup_master_token');
+                if (saved) $('masterToken').value = saved;
+            } catch (e) { /* 忽略 */ }
+        }
+
+        function formatTime(ts) {
+            if (!ts) return '待定';
+            const d = new Date(ts * 1000);
+            const pad = (n) => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+                ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[c]);
+        }
+
+        async function loadSessions() {
+            try {
+                const resp = await fetch('/api/signup/sessions');
+                const data = await resp.json();
+                sessions = data.sessions || [];
+            } catch (e) {
+                showMessage('加载场次失败：' + e, false);
+                return;
+            }
+            renderSessions();
+            renderSelect();
+        }
+
+        function renderSelect() {
+            const select = $('sessionSelect');
+            const open = sessions.filter((s) => s.status === 'open');
+            if (!open.length) {
+                select.innerHTML = '<option value="">暂无可报名场次</option>';
+                return;
+            }
+            select.innerHTML = '<option value="">请选择场次</option>' + open.map((s) => {
+                const count = s.entries.length;
+                const cap = s.capacity ? '/' + s.capacity : '';
+                return '<option value="' + s.id + '">' + escapeHtml(s.title) +
+                    '（' + formatTime(s.start_at) + '，已报 ' + count + cap + '）</option>';
+            }).join('');
+        }
+
+        function renderSessions() {
+            const list = $('sessionList');
+            if (!sessions.length) {
+                list.innerHTML = '<div class="empty">还没有场次，等待主控申请。</div>';
+                return;
+            }
+            list.innerHTML = sessions.map((s) => {
+                const count = s.entries.length;
+                const cap = s.capacity ? ' / ' + s.capacity : '';
+                const statusText = s.status === 'open' ? '报名中' : '已关闭';
+                const entriesHtml = count
+                    ? s.entries.map((e) => escapeHtml(e.call_sign) +
+                        '（' + escapeHtml(e.qth) + '，' + escapeHtml(e.equipment) + '）').join('<br>')
+                    : '<span class="empty">暂无人报名</span>';
+                const closeBtn = s.status === 'open'
+                    ? '<button class="btn small" onclick="closeSession(' + s.id + ')">关闭报名</button>'
+                    : '';
+                return '<div class="session-card ' + (s.status === 'open' ? '' : 'closed') + '">' +
+                    '<h3>' + escapeHtml(s.title) +
+                    '<span class="badge ' + s.status + '">' + statusText + '</span></h3>' +
+                    '<div class="session-meta">开始：' + formatTime(s.start_at) +
+                    '<br>已报名：' + count + cap + ' 人' +
+                    (s.created_by ? '<br>主控：' + escapeHtml(s.created_by) : '') +
+                    (s.note ? '<br>说明：' + escapeHtml(s.note) : '') +
+                    '</div>' +
+                    '<div class="entries">' + entriesHtml + '</div>' +
+                    closeBtn + '</div>';
+            }).join('');
+        }
+
+        function toggleDeviceForm() {
+            const form = $('deviceForm');
+            form.style.display = form.style.display === 'block' ? 'none' : 'block';
+        }
+
+        async function addDevice() {
+            const brand = $('deviceBrand').value.trim();
+            const model = $('deviceModel').value.trim();
+            if (!brand || !model) { showMessage('请填写品牌和型号', false); return; }
+            try {
+                const resp = await fetch('/api/device/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brand: brand, model: model })
+                });
+                const data = await resp.json();
+                if (!resp.ok) { showMessage(data.message || '添加失败', false); return; }
+                $('equipment').value = data.name;
+                $('deviceBrand').value = '';
+                $('deviceModel').value = '';
+                $('deviceForm').style.display = 'none';
+                showMessage('已添加设备：' + data.name, true);
+                loadOptions();
+            } catch (e) {
+                showMessage('添加失败：' + e.message, false);
+            }
+        }
+
+        async function loadOptions() {
+            try {
+                const resp = await fetch('/api/signup/options');
+                const data = await resp.json();
+                $('qthOptions').innerHTML = (data.qth || []).map((v) =>
+                    '<option value="' + escapeHtml(v) + '">').join('');
+                $('equipmentOptions').innerHTML = (data.equipment || []).map((v) =>
+                    '<option value="' + escapeHtml(v) + '">').join('');
+            } catch (e) { /* 候选值加载失败不影响手动输入 */ }
+        }
+
+        async function lookupCallsign() {
+            const callSign = $('callSign').value.trim().toUpperCase();
+            if (!callSign) return;
+            try {
+                const resp = await fetch('/api/signup/lookup?call_sign=' +
+                    encodeURIComponent(callSign));
+                const data = await resp.json();
+                if (!resp.ok) return;
+                if (!$('qth').value.trim() && data.qth) $('qth').value = data.qth;
+                if (!$('equipment').value.trim() && data.equipment) $('equipment').value = data.equipment;
+                if (data.source && (data.qth || data.equipment)) {
+                    showMessage('已从' + data.source + '带出该呼号的QTH/设备，可修改', true);
+                }
+            } catch (e) { /* 忽略查询失败 */ }
+        }
+
+        async function submitEntry() {
+            const sessionId = $('sessionSelect').value;
+            const callSign = $('callSign').value.trim().toUpperCase();
+            const qth = $('qth').value.trim();
+            const equipment = $('equipment').value.trim();
+
+            if (!sessionId) { showMessage('请选择要报名的场次', false); return; }
+            if (!callSign) { showMessage('呼号不能为空', false); return; }
+            if (!qth) { showMessage('QTH不能为空', false); return; }
+            if (!equipment) { showMessage('设备不能为空', false); return; }
+
+            const btn = $('submitBtn');
+            btn.disabled = true;
+            try {
+                const resp = await fetch('/api/signup/entry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: Number(sessionId),
+                        call_sign: callSign,
+                        qth: qth,
+                        equipment: equipment,
+                    }),
+                });
+                const data = await resp.json();
+                showMessage(data.message || (resp.ok ? '报名成功' : '报名失败'), resp.ok);
+                if (resp.ok) {
+                    $('callSign').value = '';
+                    $('qth').value = '';
+                    $('equipment').value = '';
+                    loadSessions();
+                    loadOptions();
+                }
+            } catch (e) {
+                showMessage('提交失败：' + e, false);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function createSession() {
+            const token = $('masterToken').value.trim();
+            const title = $('sessionTitle').value.trim();
+            const start = $('sessionStart').value;
+            const capacity = Number($('sessionCapacity').value || 0);
+            const note = $('sessionNote').value.trim();
+            const createdBy = $('masterCallsign').value.trim().toUpperCase();
+
+            if (!title) { showMessage('场次名称不能为空', false); return; }
+            if (!start) { showMessage('请选择开始时间', false); return; }
+            rememberToken(token);
+
+            try {
+                const resp = await fetch('/api/signup/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: token,
+                        title: title,
+                        start_at: start,
+                        capacity: capacity,
+                        note: note,
+                        created_by: createdBy,
+                    }),
+                });
+                const data = await resp.json();
+                showMessage(data.message || (resp.ok ? '场次已创建' : '创建失败'), resp.ok);
+                if (resp.ok) {
+                    $('sessionTitle').value = '';
+                    $('sessionStart').value = '';
+                    $('sessionCapacity').value = '0';
+                    $('sessionNote').value = '';
+                    loadSessions();
+                }
+            } catch (e) {
+                showMessage('提交失败：' + e, false);
+            }
+        }
+
+        async function closeSession(sessionId) {
+            const token = $('masterToken').value.trim();
+            if (!confirm('确认关闭该场次的报名？')) return;
+            try {
+                const resp = await fetch('/api/signup/sessions/close', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token, session_id: sessionId }),
+                });
+                const data = await resp.json();
+                showMessage(data.message || (resp.ok ? '已关闭' : '关闭失败'), resp.ok);
+                if (resp.ok) loadSessions();
+            } catch (e) {
+                showMessage('提交失败：' + e, false);
+            }
+        }
+
+        loadSessions();
+        loadOptions();
+        restoreToken();
+        $('sessionStart').value = defaultStartTime();
+        setInterval(loadSessions, 30000);
+    </script>
+</body>
+</html>

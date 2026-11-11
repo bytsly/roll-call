@@ -1,0 +1,28 @@
+# 构建产物
+build/
+dist/
+*.spec.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 数据库与日志
+*.db
+*.log
+*.pkl
+
+# 令牌与本地配置
+relay.token
+app_config.ini
+p2p_config.json
+
+# 可执行文件
+*.exe
+*.zip
+
+# IDE
+.vscode/
+.idea/

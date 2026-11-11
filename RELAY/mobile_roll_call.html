@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手机点名 - 点名系统服务器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header .version {
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .link-btn {
+            display: inline-block;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #007bff;
+            cursor: pointer;
+        }
+
+        .device-form {
+            display: none;
+            margin-top: 8px;
+            padding: 10px;
+            background: #f5f8ff;
+            border: 1px solid #dbe6ff;
+            border-radius: 10px;
+        }
+
+        .device-form input {
+            margin-bottom: 8px;
+        }
+
+        .device-form button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            background: #007bff;
+            color: #fff;
+            font-size: 15px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background: #f8f9fa;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .call-sign-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            margin-top: 5px;
+            background: white;
+            position: absolute;
+            width: calc(100% - 40px);
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .input-group {
+            position: relative;
+        }
+        
+        .call-sign-item {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+        }
+        
+        .call-sign-item:last-child {
+            border-bottom: none;
+        }
+        
+        .call-sign-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background: #28a745;
+        }
+        
+        .status-offline {
+            background: #dc3545;
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                border-radius: 15px;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            .btn {
+                padding: 12px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>手机点名</h1>
+            <div class="version">版本 {{ version }}</div>
+            <div style="margin-top:8px;"><a href="/signup" style="color:#fff;font-size:13px;opacity:.9;">场次报名 &rarr;</a></div>
+        </div>
+        
+        <div class="content">
+            <div class="input-group" style="display: flex; gap: 10px;">
+                <div style="flex: 1.2; min-width: 0;">
+                    <label for="ranking" style="font-size: 14px; line-height: 20px; white-space: nowrap;">名次（主控填0）</label>
+                    <input type="number" id="ranking" name="ranking" placeholder="主控填0" min="0" autocomplete="off" style="width: 100%;">
+                </div>
+                <div style="flex: 1.6; min-width: 0;">
+                    <label for="currentTime" style="font-size: 14px; line-height: 20px; white-space: nowrap;">确认时间</label>
+                    <input type="text" id="currentTime" name="currentTime" readonly style="width: 100%;">
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label for="callSign">呼号</label>
+                <input type="text" id="callSign" placeholder="请输入您的呼号" autocomplete="off">
+                <div class="call-sign-list" id="callSignList" style="display: none;"></div>
+            </div>
+            
+            <div class="input-group">
+                <label for="qth">QTH</label>
+                <input type="text" id="qth" placeholder="请输入QTH位置信息" autocomplete="off">
+                <div class="call-sign-list" id="qthList" style="display: none;"></div>
+            </div>
+            
+            <div class="input-group">
+                <label for="equipment">设备</label>
+                <input type="text" id="equipment" placeholder="请输入设备型号" autocomplete="off">
+                <div class="call-sign-list" id="equipmentList" style="display: none;"></div>
+                <a class="link-btn" onclick="toggleDeviceForm()">＋ 添加新设备（品牌 / 型号）</a>
+                <div class="device-form" id="deviceForm">
+                    <input type="text" id="deviceBrand" placeholder="品牌，例如 科立讯" autocomplete="off">
+                    <input type="text" id="deviceModel" placeholder="型号，例如 DP980" autocomplete="off">
+                    <button type="button" onclick="addDevice()">添加到设备库</button>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label for="power">功率</label>
+                <input type="text" id="power" placeholder="请输入功率" autocomplete="off">
+                <div class="call-sign-list" id="powerList" style="display: none;"></div>
+            </div>
+            
+            <div class="input-group">
+                <label for="antenna">天馈</label>
+                <input type="text" id="antenna" placeholder="请输入天馈系统" autocomplete="off">
+                <div class="call-sign-list" id="antennaList" style="display: none;"></div>
+            </div>
+            
+            <div class="input-group">
+                <label for="access_method">接入方式</label>
+                <select id="access_method" class="form-control">
+                    <option value="">请选择接入方式</option>
+                    <option value="数字中继">数字中继</option>
+                    <option value="热点盒子">热点盒子</option>
+                    <option value="ROIP直连">ROIP直连</option>
+                    <option value="软件接入">软件接入</option>
+                    <option value="模拟中继">模拟中继</option>
+                    <option value="模拟直频">模拟直频</option>
+                    <option value="短波CW">短波CW</option>
+                    <option value="短波SSB">短波SSB</option>
+                    <option value="短波FM">短波FM</option>
+                </select>
+            </div>
+            
+            <!-- 提交点名按钮（放大） -->
+            <div class="button-group" style="margin-top: 30px;">
+                <button class="btn btn-primary" onclick="submitRollCall()" style="font-size: 18px; padding: 20px;">提交点名</button>
+            </div>
+            
+            <!-- 导出和点名结束按钮 -->
+            <div class="button-group" style="margin-top: 15px;">
+                <button class="btn btn-secondary" onclick="exportToCSV()">导出CSV</button>
+                <button class="btn btn-secondary" onclick="endRollCallAndGoHome()">点名结束</button>
+            </div>
+            
+            <div class="result" id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // 呼号自动完成和回填功能
+        const callSignInput = document.getElementById('callSign');
+        const callSignList = document.getElementById('callSignList');
+        
+        callSignInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (query.length < 2) {
+                callSignList.style.display = 'none';
+                return;
+            }
+            
+            fetch(`/api/master_database/list?prefix=${encodeURIComponent(query)}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.call_signs && data.call_signs.length > 0) {
+                        callSignList.innerHTML = '';
+                        data.call_signs.forEach(callSign => {
+                            const item = document.createElement('div');
+                            item.className = 'call-sign-item';
+                            item.textContent = callSign;
+                            item.onclick = function() {
+                                callSignInput.value = callSign;
+                                callSignList.style.display = 'none';
+                                // 选择呼号后自动回填信息
+                                fillCallSignInfo(callSign, true);
+                            };
+                            callSignList.appendChild(item);
+                        });
+                        callSignList.style.display = 'block';
+                    } else {
+                        callSignList.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('获取呼号列表失败:', error);
+                    callSignList.style.display = 'none';
+                });
+
+            // 输入停顿后自动拉取信息，无需点选下拉建议
+            clearTimeout(autoFillTimer);
+            autoFillTimer = setTimeout(autoFillFromCallSign, 600);
+        });
+
+        // 失焦（换行/点击其他输入框）时立即尝试回填
+        callSignInput.addEventListener('change', autoFillFromCallSign);
+
+        let autoFillTimer = null;
+        let lastFilledCallSign = '';
+
+        function autoFillFromCallSign() {
+            const value = callSignInput.value.trim().toUpperCase();
+            if (value.length < 3 || value === lastFilledCallSign) return;
+            fetch(`/api/master_database/search?call_sign=${encodeURIComponent(value)}&page_size=1`)
+                .then(response => response.json())
+                .then(data => {
+                    const record = (data.records || [])[0];
+                    if (!record || (record.call_sign || '').toUpperCase() !== value) return;
+                    applyCallSignRecord(record, false);
+                })
+                .catch(error => {
+                    console.error('自动回填呼号信息失败:', error);
+                });
+        }
+        
+        // 呼号信息回填函数
+        function fillCallSignInfo(callSign, force) {
+            if (!callSign) return;
+            
+            // 从主数据库查询呼号详细信息
+            fetch(`/api/master_database/search?call_sign=${encodeURIComponent(callSign)}&page_size=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.records && data.records.length > 0) {
+                        applyCallSignRecord(data.records[0], force === true);
+                    }
+                })
+                .catch(error => {
+                    console.error('获取呼号详细信息失败:', error);
+                });
+        }
+
+        // 把查询到的呼号资料写进表单；force=true 时覆盖已填内容，否则只补空字段
+        function applyCallSignRecord(record, force) {
+            lastFilledCallSign = (record.call_sign || '').toUpperCase();
+            const fill = (id, value) => {
+                const el = document.getElementById(id);
+                if (!value) return;
+                if (!force && el.value.trim()) return;
+                el.value = value;
+            };
+            fill('qth', record.qth || '');
+            fill('equipment', record.equipment || '');
+            fill('power', record.power || '');
+            fill('antenna', record.antenna || '');
+
+            const accessMethodSelect = document.getElementById('access_method');
+            const accessMethodValue = record.access_method || '';
+            if (accessMethodValue && (force || accessMethodSelect.value === '')) {
+                for (let i = 0; i < accessMethodSelect.options.length; i++) {
+                    if (accessMethodSelect.options[i].value === accessMethodValue) {
+                        accessMethodSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 设备、QTH、功率、天馈：输入或点开时提供候选选择
+        const optionPickers = [];
+
+        function bindOptionPicker(inputId, listId, field) {
+            const input = document.getElementById(inputId);
+            const list = document.getElementById(listId);
+            if (!input || !list) return;
+            let options = null;
+
+            const show = () => {
+                if (!options) return;
+                const query = input.value.trim().toLowerCase();
+                const matched = options.filter(
+                    option => !query || option.toLowerCase().includes(query)
+                ).slice(0, 50);
+                if (!matched.length) {
+                    list.style.display = 'none';
+                    return;
+                }
+                list.innerHTML = '';
+                matched.forEach(option => {
+                    const item = document.createElement('div');
+                    item.className = 'call-sign-item';
+                    item.textContent = option;
+                    item.onclick = function() {
+                        input.value = option;
+                        list.style.display = 'none';
+                    };
+                    list.appendChild(item);
+                });
+                list.style.display = 'block';
+            };
+
+            const load = () => {
+                if (options) return Promise.resolve(options);
+                return fetch('/api/options/' + field)
+                    .then(response => response.json())
+                    .then(data => {
+                        options = (data.status === 'success' && data.options) ? data.options : [];
+                        return options;
+                    })
+                    .catch(error => {
+                        console.error('获取 ' + field + ' 选项失败:', error);
+                        options = [];
+                        return options;
+                    });
+            };
+
+            input.addEventListener('focus', function() {
+                load().then(show);
+            });
+            input.addEventListener('input', function() {
+                load().then(show);
+            });
+            optionPickers.push({ input: input, list: list, invalidate: function() { options = null; } });
+        }
+
+        bindOptionPicker('equipment', 'equipmentList', 'equipment');
+        bindOptionPicker('qth', 'qthList', 'qth');
+        bindOptionPicker('power', 'powerList', 'power');
+        bindOptionPicker('antenna', 'antennaList', 'antenna');
+
+        function toggleDeviceForm() {
+            const form = document.getElementById('deviceForm');
+            form.style.display = form.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function addDevice() {
+            const brand = document.getElementById('deviceBrand').value.trim();
+            const model = document.getElementById('deviceModel').value.trim();
+            if (!brand || !model) {
+                showResult('请填写品牌和型号', 'error');
+                return;
+            }
+            fetch('/api/device/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ brand: brand, model: model })
+            }).then(function(response) {
+                return response.json();
+            }).then(function(data) {
+                if (data.status !== 'success') {
+                    showResult(data.message || '添加失败', 'error');
+                    return;
+                }
+                document.getElementById('equipment').value = data.name;
+                document.getElementById('deviceBrand').value = '';
+                document.getElementById('deviceModel').value = '';
+                document.getElementById('deviceForm').style.display = 'none';
+                optionPickers.forEach(function(picker) { picker.invalidate(); });
+                showResult('已添加设备：' + data.name + '，可直接点名', 'success');
+            }).catch(function(error) {
+                showResult('添加失败：' + error.message, 'error');
+            });
+        }
+
+        // 点击页面其他区域隐藏所有下拉列表
+        document.addEventListener('click', function(e) {
+            optionPickers.forEach(function(picker) {
+                if (!picker.input.contains(e.target) && !picker.list.contains(e.target)) {
+                    picker.list.style.display = 'none';
+                }
+            });
+        });
+
+
+        
+        // 点击页面其他区域隐藏呼号列表
+        document.addEventListener('click', function(e) {
+            if (!callSignInput.contains(e.target) && !callSignList.contains(e.target)) {
+                callSignList.style.display = 'none';
+            }
+        });
+        
+        // 为所有输入框添加回车键提交功能
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // 防止默认行为（如表单提交）
+                    submitRollCall();
+                }
+            });
+        });
+        
+        // 导出CSV文件
+        function exportToCSV() {
+            // 显示加载状态
+            const exportBtn = document.querySelector('.btn-secondary');
+            const originalText = exportBtn.textContent;
+            exportBtn.textContent = '导出中...';
+            exportBtn.disabled = true;
+            
+            fetch('/api/mobile_roll_call/export_csv')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('导出失败');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // 创建下载链接
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    
+                    // 生成文件名：手机点名记录_年月日_时分秒.csv
+                    const now = new Date();
+                    const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+                    a.download = `手机点名记录_${timestamp}.csv`;
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showResult('CSV文件导出成功！', 'success');
+                })
+                .catch(error => {
+                    console.error('导出失败:', error);
+                    showResult('导出失败，请重试', 'error');
+                })
+                .finally(() => {
+                    // 恢复按钮状态
+                    exportBtn.textContent = originalText;
+                    exportBtn.disabled = false;
+                });
+        }
+        
+        // 提交点名
+        function submitRollCall() {
+            const ranking = document.getElementById('ranking').value.trim();
+            const currentTime = document.getElementById('currentTime').value.trim();
+            const callSign = callSignInput.value.trim();
+            const qth = document.getElementById('qth').value.trim();
+            const equipment = document.getElementById('equipment').value.trim();
+            const power = document.getElementById('power').value.trim();
+            const antenna = document.getElementById('antenna').value.trim();
+            const accessMethod = document.getElementById('access_method').value;
+            
+            // 验证输入
+            if (!callSign) {
+                showResult('请输入呼号', 'error');
+                return;
+            }
+            
+            if (!qth) {
+                showResult('请输入QTH位置信息', 'error');
+                return;
+            }
+            
+            if (!equipment) {
+                showResult('请输入设备型号', 'error');
+                return;
+            }
+            
+            // 显示加载状态
+            const submitBtn = document.querySelector('.btn-primary');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = '提交中...';
+            submitBtn.disabled = true;
+            
+            // 调用真实API接口
+            fetch('/api/mobile_roll_call', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ranking: ranking,
+                    currentTime: currentTime,
+                    callSign: callSign,
+                    qth: qth,
+                    equipment: equipment,
+                    power: power,
+                    antenna: antenna,
+                    access_method: accessMethod
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const accessMethodText = accessMethod ? `，接入方式：${accessMethod}` : '';
+                    if (ranking === '0') {
+                        // 名次 0 = 主控签到，签到成功后点名即开始
+                        showResult(data.message || '主控签到成功，点名已开始！', 'success');
+                    } else {
+                        const rankingText = ranking ? `名次：${ranking}，` : '';
+                        showResult(`点名成功！${rankingText}呼号：${callSign}，QTH：${qth}，设备：${equipment}${accessMethodText}`, 'success');
+                    }
+                    
+                    // 名次递增：主控签到（0）之后从 1 开始
+                    let currentRanking = parseInt(document.getElementById('ranking').value) || 0;
+                    document.getElementById('ranking').value = currentRanking + 1;
+                    
+                    // 清空表单（保留名次）
+                    document.getElementById('callSign').value = '';
+                    document.getElementById('qth').value = '';
+                    document.getElementById('equipment').value = '';
+                    document.getElementById('power').value = '';
+                    document.getElementById('antenna').value = '';
+                    document.getElementById('access_method').selectedIndex = 0; // 重置为"请选择接入方式"
+                    
+                    // 焦点回到呼号输入框
+                    document.getElementById('callSign').focus();
+                } else {
+                    showResult(`点名失败：${data.message}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('API调用失败:', error);
+                showResult('网络错误，请重试', 'error');
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+        
+        // 显示结果
+        function showResult(message, type) {
+            const result = document.getElementById('result');
+            result.textContent = message;
+            result.className = 'result ' + type;
+            result.style.display = 'block';
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                result.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 获取当前位置（需要用户授权）
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        // 这里可以调用地理编码API将坐标转换为地址
+                        document.getElementById('location').value = `纬度: ${lat.toFixed(6)}, 经度: ${lng.toFixed(6)}`;
+                    },
+                    function(error) {
+                        console.error('获取位置失败:', error);
+                    }
+                );
+            }
+        }
+        
+        // 更新当前时间
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('currentTime').value = timeString;
+        }
+        
+        // 点名结束并返回首页
+        function endRollCallAndGoHome() {
+            // 首先检查是否有数据需要导出
+            fetch('/api/mobile_roll_call/check_data_before_delete')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && data.has_data) {
+                        // 有数据，提醒用户先导出
+                        const confirmMessage = `⚠️ 警告：当前有 ${data.total_records} 条点名记录！
+
+删除后将无法恢复。
+
+请先导出CSV文件保存数据，然后再删除。
+
+是否继续删除？`;
+                        
+                        if (confirm(confirmMessage)) {
+                            // 用户确认删除，直接删除表
+                            deleteTablesAndGoHome();
+                        }
+                    } else {
+                        // 没有数据，直接删除
+                        if (confirm('确定要结束点名并删除所有点名表吗？')) {
+                            deleteTablesAndGoHome();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('检查数据失败:', error);
+                    alert('检查数据失败，请重试');
+                });
+        }
+        
+        // 删除点名表并返回首页
+        function deleteTablesAndGoHome() {
+            // 显示加载状态
+            const homeBtn = document.querySelector('.btn-secondary:last-child');
+            const originalText = homeBtn.textContent;
+            homeBtn.textContent = '删除中...';
+            homeBtn.disabled = true;
+            
+            // 调用删除点名表API
+            fetch('/api/mobile_roll_call/delete_tables', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(`点名结束！已删除 ${data.deleted_tables.length} 个点名表。`);
+                    // 删除成功后返回首页
+                    window.location.href = '/';
+                } else {
+                    alert('删除点名表失败：' + (data.message || '未知错误'));
+                    // 恢复按钮状态
+                    homeBtn.textContent = originalText;
+                    homeBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('删除点名表失败:', error);
+                alert('删除点名表失败，请重试');
+                // 恢复按钮状态
+                homeBtn.textContent = originalText;
+                homeBtn.disabled = false;
+            });
+        }
+        
+        // 页面加载时初始化
+        window.addEventListener('load', function() {
+            // 设置初始名次为1（用户可以自定义修改）
+            document.getElementById('ranking').value = 1;
+            // 更新当前时间
+            updateCurrentTime();
+            // 每秒更新一次时间
+            setInterval(updateCurrentTime, 1000);
+            
+            // 可选：自动获取位置
+            // getCurrentLocation();
+        });
+    </script>
+</body>
+</html>
