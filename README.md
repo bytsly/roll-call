@@ -10,6 +10,11 @@
 - `p2p_sync.py`、`master_library_sync.py`：P2P 同步与主库同步
 - `client_updater.py`：客户端自动更新
 
+## 下载
+
+- `release/点名软件_完整版.zip`：客户端 v2.0 完整包
+- `release/relay_server_v1.1.exe`：中继 v1.1
+
 ## 运行
 
 ```powershell
