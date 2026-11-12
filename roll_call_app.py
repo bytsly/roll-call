@@ -24,6 +24,7 @@ import hashlib
 import time
 import csv
 import socket
+import webbrowser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 # 用于PDF导出的库
 from reportlab.lib.pagesizes import letter
@@ -82,7 +83,7 @@ def load_api_base_url():
 API_BASE_URL = load_api_base_url()
 
 # 客户端版本号
-CLIENT_VERSION = "2.0"
+CLIENT_VERSION = "2.1"
 
 class RollCallApp:
     def __init__(self, root):
@@ -1254,8 +1255,8 @@ class RollCallApp:
         self.pistar_host_var = tk.StringVar(value=self._load_last_box_host())
         self.pistar_host_entry = ttk.Entry(input_frame, textvariable=self.pistar_host_var, width=20)
         self.pistar_host_entry.grid(row=0, column=8, padx=3, pady=2, sticky=tk.W)
-        # 地址被手动修改时，未连接状态下按钮自动切换（有地址->连接，空地址->搜索）
-        self.pistar_host_var.trace_add("write", self._on_pistar_host_changed)
+        # 双击地址框直接用浏览器打开盒子网页
+        self.pistar_host_entry.bind('<Double-Button-1>', self._pistar_open_box_web)
         
         # 创建用户名和密码的高级选项框架（默认隐藏）
         self.advanced_options_frame = ttk.Frame(input_frame)
@@ -1283,9 +1284,15 @@ class RollCallApp:
         self.show_advanced_button.grid_remove()
         
         # 在输入框架中添加所有按钮，使其与主机地址在同一行显示
-        # 搜索/连接/断开按钮（根据搜索与连接状态自动切换）
-        self.connection_button = ttk.Button(input_frame, text="搜索", command=self.pistar_button_action)
-        self.connection_button.grid(row=0, column=10, padx=3, pady=2, sticky=tk.W)
+        # “搜索”与“连接”分开：可手填地址直接连接，也可先搜索出地址再连接
+        self.box_action_frame = ttk.Frame(input_frame)
+        self.box_action_frame.grid(row=0, column=10, padx=3, pady=2, sticky=tk.W)
+        self.pistar_search_button = ttk.Button(
+            self.box_action_frame, text="搜索", width=6, command=self._pistar_search_box)
+        self.pistar_search_button.pack(side=tk.LEFT)
+        self.connection_button = ttk.Button(
+            self.box_action_frame, text="连接", width=6, command=self.pistar_toggle_connection)
+        self.connection_button.pack(side=tk.LEFT, padx=(4, 0))
 
         # 时隙选择单选框
         self.timeslot_var = tk.IntVar(value=1)  # 默认选择时隙1
@@ -1493,8 +1500,9 @@ class RollCallApp:
             messagebox.showinfo("成功", f"盒子连接测试成功\n系统类型: {sys_name}")
             # 保存本次成功连接的盒子地址，作为下次启动的默认值
             self._save_last_box_host(self.pistar_host_var.get().strip())
-            # 更新按钮状态
+            # 更新按钮状态（已连接时禁止再搜索）
             self.connection_button.config(text="断开", state='normal')
+            self.pistar_search_button.config(state='disabled')
             self.pistar_test_button.config(state='normal')
         else:
             error_text = "盒子连接测试失败"
@@ -1503,8 +1511,9 @@ class RollCallApp:
             messagebox.showerror("错误", error_text)
             # 重置测试器
             self.pistar_tester = None
-            # 重新启用连接按钮
+            # 重新启用连接与搜索按钮
             self.connection_button.config(text="连接", state='normal')
+            self.pistar_search_button.config(state='normal')
             # 如果是验证错误，自动显示高级选项按钮和框架
             if error_message and ("认证" in error_message or "登录" in error_message or "password" in error_message.lower() or "username" in error_message.lower()):
                 # 显示高级选项按钮
@@ -1513,31 +1522,27 @@ class RollCallApp:
                 if self.advanced_options_frame.winfo_manager() != 'grid':
                     self.toggle_advanced_options()
         
-    def pistar_button_action(self):
-        """盒子按钮统一入口：根据按钮当前文本分发到 搜索/连接/断开"""
-        text = self.connection_button.cget("text")
-        if text == "搜索":
-            self._pistar_search_box()
-        elif text == "搜索中...":
-            pass  # 搜索过程中忽略点击
-        else:
-            self.pistar_toggle_connection()
-
-    def _on_pistar_host_changed(self, *args):
-        """地址框内容变化时，未连接状态下自动切换按钮：有地址->连接，空地址->搜索"""
-        if self.pistar_tester is not None:
-            return  # 已连接状态保持“断开”不变
-        current = self.connection_button.cget("text")
-        if current == "搜索中...":
-            return  # 搜索过程中不干扰
-        if self.pistar_host_var.get().strip():
-            self.connection_button.config(text="连接", state='normal')
-        else:
-            self.connection_button.config(text="搜索", state='normal')
+    def _pistar_open_box_web(self, event=None):
+        """双击地址框：用系统默认浏览器打开盒子网页"""
+        host = self.pistar_host_var.get().strip()
+        if not host:
+            messagebox.showinfo("提示", "地址为空，请先输入盒子 IP 或主机名")
+            return "break"
+        url = host if host.lower().startswith(("http://", "https://")) else "http://" + host
+        try:
+            webbrowser.open(url)
+            self.pistar_log_message(f"已在浏览器打开: {url}")
+        except Exception as exc:
+            messagebox.showerror("错误", f"无法打开浏览器: {exc}")
+        return "break"
 
     def _pistar_search_box(self):
-        """启动局域网盒子搜索"""
-        self.connection_button.config(text="搜索中...", state='disabled')
+        """启动局域网盒子搜索（搜索出地址后由用户点“连接”）"""
+        if self.pistar_tester is not None:
+            messagebox.showinfo("提示", "请先断开当前连接再搜索")
+            return
+        self.pistar_search_button.config(text="搜索中...", state='disabled')
+        self.connection_button.config(state='disabled')
         self.pistar_host_entry.config(state='disabled')
         self.pistar_log_message("开始在局域网内搜索盒子...")
 
@@ -1666,13 +1671,14 @@ class RollCallApp:
 
     def _pistar_search_result(self, found_ip):
         """处理搜索结果"""
+        self.pistar_search_button.config(text="搜索", state='normal')
         self.pistar_host_entry.config(state='normal')
         if found_ip:
             self.pistar_host_var.set(found_ip)
             self.connection_button.config(text="连接", state='normal')
             self.pistar_log_message(f"发现盒子: {found_ip}，请点击“连接”")
         else:
-            self.connection_button.config(text="搜索", state='normal')
+            self.connection_button.config(text="连接", state='normal')
             self.pistar_log_message("未在局域网内发现盒子")
             messagebox.showinfo("搜索结果", "未在局域网内发现盒子，请确认盒子已开机并接入同一网络，或手动输入盒子地址")
 
@@ -1701,8 +1707,9 @@ class RollCallApp:
         self.pistar_tester.set_log_callback(self.pistar_log_message)
         # 设置时隙选择（timeslot_var 是GUI类的属性，不需要赋值给测试器）
         
-        # 更新按钮文本
+        # 更新按钮文本（连接过程中禁用搜索）
         self.connection_button.config(text="连接中...", state='disabled')
+        self.pistar_search_button.config(state='disabled')
         
         # 在新线程中执行连接测试
         def connect_task():
@@ -1725,6 +1732,7 @@ class RollCallApp:
         
         # 更新UI状态
         self.connection_button.config(text="连接", state='normal')
+        self.pistar_search_button.config(text="搜索", state='normal')
         self.pistar_test_button.config(state='disabled')
         
         # 清空通话记录
